@@ -117,7 +117,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                 if (isChecked) {
                     myROIWidth = 280;
                 } else {
-                    myROIWidth = 500;
+//                    myROIWidth = 500;
                 }
             }
 
