@@ -16,8 +16,8 @@
         android:layout_alignParentStart="false"
         android:layout_alignParentBottom="true"
         android:layout_centerHorizontal="true"
-        android:layout_marginBottom="100dp"
-        android:text="NEW"
+        android:layout_marginBottom="110dp"
+        android:text="Capture"
         android:textAppearance="@style/TextAppearance.AppCompat.Title" />
 
     <TextView
@@ -44,8 +44,17 @@
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:layout_centerHorizontal="true"
-        android:layout_marginBottom="60dp"
+        android:layout_marginBottom="91dp"
         android:text='CAPTURE TEXT TO TRANSLATE' />
+
+    <TextView
+        android:id="@+id/morse"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="70dp"
+        android:text="Morse" />
 
     <SurfaceView
         android:id="@+id/debugView"
@@ -56,5 +65,25 @@
         android:layout_centerHorizontal="true"
         android:layout_marginStart="62dp"
         android:layout_marginBottom="242dp" />
+
+    <Button
+        android:id="@+id/playBtn"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="20dp"
+        android:text="Play Morse" />
+
+    <Switch
+        android:id="@+id/modelSwitch"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginEnd="56dp"
+        android:layout_marginBottom="158dp"
+        android:text="tfSVM"
+        android:textColor="#FFFFFF" />
 
 </RelativeLayout>

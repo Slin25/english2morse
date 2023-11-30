@@ -53,7 +53,6 @@ public class SVM {
 
         // Find max probability idx
         int largest_idx = 0;
-        Log.e("PREDICT", "0: " + y_hat[0]);
 
         for (int i = 1; i < y_hat.length; i++) {
             if (y_hat[largest_idx] < y_hat[i]) {

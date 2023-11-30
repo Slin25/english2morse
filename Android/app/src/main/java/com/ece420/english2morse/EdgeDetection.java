@@ -2,6 +2,7 @@ package com.ece420.english2morse;
 
 import android.util.Log;
 
+import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.imgproc.Imgproc;
@@ -28,7 +29,8 @@ public class EdgeDetection  {
         for(int i=0; i<size; i++)
         {
             int p = (int)Math.sqrt((xdata[i] * xdata[i] + ydata[i] * ydata[i]) / 2);
-            mergeData[i] = 0xff000000 | p<<16 | p<<8 | p;
+//            mergeData[i] = 0xff000000 | p<<16 | p<<8 | p;
+            mergeData[i] = p;
         }
         return mergeData;
     }
@@ -65,179 +67,196 @@ public class EdgeDetection  {
         return convData;
     }
 
+    public int[] convertCameraImage(Mat data) {
+        Mat mResized = new Mat(28, 28, CvType.CV_32FC1);
+        Imgproc.resize(data, mResized, mResized.size(), 0,0, Imgproc.INTER_AREA);
+        mResized = mResized.reshape(0,28*28);
+
+        int[] ret_data = new int[(int) mResized.total()];
+
+        double Min = mResized.get(0, 0)[0];
+        double Max = mResized.get(0, 0)[0];
+        for (int i = 0; i < mResized.rows(); i++) {
+            double temp = mResized.get(i, 0)[0];
+            if (temp > Max) {
+                Max = temp;
+            }
+
+            if (temp < Min) {
+                Min = temp;
+            }
+        }
+
+        double[] val1;
+        int p;
+        for (int i = 0; i < mResized.rows(); i++) {
+            val1 = mResized.get(i, 0);
+            val1[0] = Math.floor((val1[0]-Min)*255/(Max-Min));
+            p = (int) (val1[0]);
+            if (i < 28 || i % 28 == 0 || i % 28 == 27 || i > 755) {
+                p = (int) (Math.floor(((int)(mResized.get(1, 0)[0])-Min)*255/(Max-Min)));
+            }
+            ret_data[i] = (int) (0xff000000 | p<<16 | p<<8 | p);
+        }
+
+        return ret_data;
+    }
     public double[] performEdgeD(Mat data) {
         int[] xData = conv2(data, width, height, kernelX);
         int[] yData = conv2(data, width, height, kernelY);
 
         double[] edge_data = merge(xData, yData);
-        // Remove edge borders
-        double min_v = 214748364.0;
-        double max_v = -214748364.0;
-
+        double[] ret_edge = new double[edge_data.length];
+        double Min = edge_data[0];
+        double Max = edge_data[0];
         for (int i = 0; i < edge_data.length; i++) {
-            if (edge_data[i] < min_v) {
-                min_v = edge_data[i];
+            if (edge_data[i] < Min) {
+                Min = edge_data[i];
             }
 
-            if (edge_data[i] > max_v) {
-                max_v = edge_data[i];
+            if (edge_data[i] > Max) {
+                Max = edge_data[i];
             }
         }
-        Log.e("EDGE_MIN", "" + min_v);
-        Log.e("EDGE_MAX", "" + max_v);
-        // Remove Top & Bottom edges
-        for (int j = 0; j < width; j++) {
-            edge_data[j] = min_v;
-            edge_data[((1) * width) + j] = min_v;
-            edge_data[((2) * width) + j] = min_v;
-            edge_data[((3) * width) + j] = min_v;
-            edge_data[((4) * width) + j] = min_v;
-            edge_data[((height - 5) * width) + j] = min_v;
-            edge_data[((height - 4) * width) + j] = min_v;
-            edge_data[((height - 3) * width) + j] = min_v;
-            edge_data[((height - 2) * width) + j] = min_v;
-            edge_data[((height - 1) * width) + j] = min_v;
+
+        // 0 to 255 range
+        double p;
+        for (int i = 0; i < edge_data.length; i++) {
+            if (i < width || i % width == 0 || i % width == width - 1 || i > ((width * height) - width - 1)) {
+                // remove border edges
+                p = (double) (Math.floor(((edge_data[1])-Min)*255/(Max-Min)));
+            } else {
+                p = Math.floor((edge_data[i]-Min)*255/(Max-Min));
+            }
+            ret_edge[i] = p;
         }
 
-        // Remove Left & Right edges
-        for (int i = 0; i < height; i++) {
-            edge_data[i * width] = min_v;
-            edge_data[(i * width) + 1] = min_v;
-            edge_data[(i * width) + 2] = min_v;
-            edge_data[(i * width) + 3] = min_v;
-            edge_data[(i * width) + 4] = min_v;
-            edge_data[(i * width) + width - 5] = min_v;
-            edge_data[(i * width) + width - 4] = min_v;
-            edge_data[(i * width) + width - 3] = min_v;
-            edge_data[(i * width) + width - 2] = min_v;
-            edge_data[(i * width) + width - 1] = min_v;
-        }
-
-        return edge_data;
+        return ret_edge;
     }
 
-    public int[] findTopBottomRow(int[] data) {
-        int[] top_bottom = {-1, -1};
-        boolean top = false;
-        for (int j = 0; j < height; j++) {
-            for (int i = 0; i < width; i++) {
-                if (data[(i * width) + j] == 255 && j != 0 && !top) {
-                    top_bottom[0] = j;
-                    top = true;
-                } else if (data[(i * width) + j] == 255 && j != height - 1) {
-                    top_bottom[1] = j;
-                }
+    public double[] processImage(Mat data) {
+        Mat mResized = new Mat(28, 28, CvType.CV_32FC1);
+        Imgproc.resize(data, mResized, mResized.size(), 0,0, Imgproc.INTER_AREA);
+        mResized = mResized.reshape(0,28*28);
+
+        double[] ret_data = new double[(int)(mResized.total())];
+        double Min = mResized.get(0, 0)[0];
+        double Max = mResized.get(0, 0)[0];
+        for (int i = 0; i < mResized.rows(); i++) {
+            double temp = mResized.get(i, 0)[0];
+            if (temp > Max) {
+                Max = temp;
+            }
+
+            if (temp < Min) {
+                Min = temp;
             }
         }
 
-        return top_bottom;
+        double[] val1;
+        int p;
+        for (int i = 0; i < mResized.rows(); i++) {
+            val1 = mResized.get(i, 0);
+            val1[0] = Math.floor((val1[0]-Min)*255/(Max-Min));
+//            Log.e("Val1", "" + i + " : " + val1[0]);
+            p = (int) (val1[0]);
+            if (i < 27 || i % 28 == 0 || i % 28 == 27 || i > 755) {
+                // Remove borders
+                p = (int) (Math.floor(((int)(mResized.get(1, 0)[0])-Min)*255/(Max-Min)));
+            }
+            ret_data[i] = p;
+        }
+
+        return ret_data;
     }
 
-    public List<Integer> findCutOffColumns(double[] data, double max_value) {
+    public Mat convertGrayscaleRange(Mat data) {
+        Mat ret_gs = new Mat(data.rows(), data.cols(), CvType.CV_32FC1);
+        double [] ret_d = new double[(int)ret_gs.total()];
+
+        double Min = data.get(0, 0)[0];
+        double Max = data.get(0, 0)[0];
+        for (int i = 0; i < data.rows(); i++) {
+            double temp = data.get(i, 0)[0];
+            if (temp > Max) {
+                Max = temp;
+            }
+
+            if (temp < Min) {
+                Min = temp;
+            }
+        }
+
+        double[] val1;
+        int p;
+        for (int i = 0; i < data.rows(); i++) {
+            val1 = data.get(i, 0);
+            val1[0] = 255 - Math.floor((val1[0]-Min)*255/(Max-Min));
+            p = (int) (255 - val1[0]);
+            if (i < 27 || i % 28 == 0 || i % 28 == 27 || i > 755) {
+                // Remove borders
+                p = (int) (Math.floor(((int)(data.get(1, 0)[0])-Min)*255/(Max-Min)));
+            }
+            ret_d[i] = p;
+        }
+
+        ret_gs.put(0, 0, ret_d);
+
+        return ret_gs;
+    }
+    public List<Mat> performTextSeg(Mat data) {
+        List<Mat> retText = new ArrayList<Mat>();
+        double[] grayscale_edge = performEdgeD(data);
+
+        List<Integer> col_pairs = findCutOffColumns(grayscale_edge);
+
+
+        for (int i = 0; i < col_pairs.size(); i+=2) {
+            Mat temp = data.submat(0, height, col_pairs.get(i), col_pairs.get(i+1));
+
+            Mat mResized = new Mat(28, 28, CvType.CV_32FC1);
+            Imgproc.resize(temp, mResized, mResized.size(), 0,0, Imgproc.INTER_AREA);
+            mResized = mResized.reshape(0,28*28);
+
+            retText.add(convertGrayscaleRange(mResized));
+        }
+        return retText;
+    }
+
+    public List<Integer> findCutOffColumns(double[] data) {
         List<Integer> col_pairs = new ArrayList<Integer>();
 
-        boolean end = false;
-        int prev_col = -2;
-        for (int i = 0; i < width; i++) {
+        boolean saw_white = false;
+        boolean white_col = false;
+        col_pairs.add(0);
+        Log.e("COLS", "new " + 0);
+        for (int i = 1; i < width; i++) {
+            white_col = false;
             for (int j = 0; j < height; j++) {
-                if (data[(j * width) + i] == max_value && i != 0 && i != width - 1) {
-                    if (!end) {
-                        col_pairs.add(i);
-                        Log.e("COLS", ""+i);
-                        end = true;
-                    } else {
-                        prev_col = i;
+                if (data[(j * width) + i] == 255) {
+                    white_col = true;
+                    if (!saw_white) {
+                        saw_white = true;
+
                     }
-                    continue;
+                    break;
                 }
             }
-            if (end && prev_col == i - 1) {
-                col_pairs.add(prev_col);
-                end = false;
+
+            if (saw_white && !white_col) {
+                col_pairs.add(i);
+                col_pairs.add(i);
+                Log.e("COLS", "end " + i);
+                Log.e("COLS", "" + i);
+                saw_white = false;
             }
+
         }
 
         if (col_pairs.size() % 2 != 0) {
             col_pairs.add(width - 1);
+            Log.e("COLS", "FIN " + (width - 1));
         }
         return col_pairs;
-    }
-
-
-    public List<double[]> performTextSeg(Mat data) {
-        List<double[]> text = new ArrayList<double[]>();
-        double[] edge_data = performEdgeD(data);
-
-        // Remove edge borders
-        double min_v = 214748364.0;
-        double max_v = -214748364.0;
-
-        for (int i = 0; i < edge_data.length; i++) {
-            if (edge_data[i] < min_v) {
-                min_v = edge_data[i];
-            }
-
-            if (edge_data[i] > max_v) {
-                max_v = edge_data[i];
-            }
-        }
-        Log.e("EDGE_MIN", "" + min_v);
-        Log.e("EDGE_MAX", "" + max_v);
-        // Remove Top & Bottom edges
-        for (int j = 0; j < width; j++) {
-            edge_data[j] = min_v;
-            edge_data[((1) * width) + j] = min_v;
-            edge_data[((2) * width) + j] = min_v;
-            edge_data[((3) * width) + j] = min_v;
-            edge_data[((4) * width) + j] = min_v;
-            edge_data[((height - 5) * width) + j] = min_v;
-            edge_data[((height - 4) * width) + j] = min_v;
-            edge_data[((height - 3) * width) + j] = min_v;
-            edge_data[((height - 2) * width) + j] = min_v;
-            edge_data[((height - 1) * width) + j] = min_v;
-        }
-
-        // Remove Left & Right edges
-        for (int i = 0; i < height; i++) {
-            edge_data[i * width] = min_v;
-            edge_data[(i * width) + 1] = min_v;
-            edge_data[(i * width) + 2] = min_v;
-            edge_data[(i * width) + 3] = min_v;
-            edge_data[(i * width) + 4] = min_v;
-            edge_data[(i * width) + width - 5] = min_v;
-            edge_data[(i * width) + width - 4] = min_v;
-            edge_data[(i * width) + width - 3] = min_v;
-            edge_data[(i * width) + width - 2] = min_v;
-            edge_data[(i * width) + width - 1] = min_v;
-        }
-
-        // Find cutoff columns
-        List<Integer> cols = findCutOffColumns(edge_data, max_v);
-
-        for (int i = 0; i < cols.size(); i+=2) {
-            int start = cols.get(i);
-            int end = cols.get(i+1);
-            Log.e("COLS", "START: " + start + " END: " + end);
-            int idx = 0;
-            double[] temp = new double[(end-start+1)*height];
-            Mat crop_t = new Mat(height, (end-start+1), CvType.CV_32FC1);
-            for (int x = start; x < end+1; x++) {
-                for (int j = 0; j < height; j++) {
-                    temp[idx] = edge_data[(j*width) + x];
-                    idx++;
-                }
-            }
-            crop_t.put(0, 0, temp);
-            Mat mResized = new Mat(28, 28, CvType.CV_8UC1);
-            Imgproc.resize(crop_t, mResized, mResized.size(), 0,0, Imgproc.INTER_AREA);
-            mResized = mResized.reshape(0,28*28);
-            mResized.convertTo(mResized,CvType.CV_32FC1);
-            Log.e("RESIZED", mResized.dump());
-            double[] resized_t = new double[28*28];
-            mResized.put(0, 0, resized_t);
-            text.add(resized_t);
-        }
-
-        return text;
     }
 }
