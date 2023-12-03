@@ -31,6 +31,7 @@ import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
+import org.opencv.android.Utils;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.Point;
@@ -73,7 +74,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     private Mat mCrop;
 
     private Rect2d myROI = new Rect2d(0,0,0,0);
-    private int myROIWidth = 280;
+    private int myROIWidth = 520;
     private int myROIHeight = 280;
     private Scalar myROIColor = new Scalar(0,100,0);
 
@@ -110,18 +111,8 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         playButton = (Button) findViewById(R.id.playBtn);
         // Setup Switch for choosing model, True = tf SVM model, False = regular SVM model
         model_switch = (Switch) findViewById(R.id.modelSwitch);
+        model_switch.setChecked(true);
 
-        model_switch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                if (isChecked) {
-                    myROIWidth = 280;
-                } else {
-//                    myROIWidth = 500;
-                }
-            }
-
-        });
         playButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -253,52 +244,57 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     }
     public void english2Morse() {
         pred_letter = "";
+//        Mat ret_ts = edge_d.drawTextSeg(mCrop);
+//        draw(surfaceHolder, ret_ts);
+//        drawLetter(surfaceHolder, edge_d.convertCameraImage(ret_ts));
+
         if (model_switch.isChecked()) {
             // Use tf SVM model
 
             // Text Segmentation
-//            retTextSeg = edge_d.performTextSeg(mCrop);
-//            float[] model_input_d = new float[28*28];
-//            int [] draw_last_letter = new int[28*28];
-//            for (int i = 0; i < retTextSeg.size(); i++) {
-//                Mat temp = retTextSeg.get(i);
-//                for (int j = 0; j < temp.rows(); j++) {
-//                    model_input_d[j] = (float) temp.get(j, 0)[0];
-//                    if (i == retTextSeg.size() -  1) {
-//                        int p = (int) temp.get(j, 0)[0];
-//                        draw_last_letter[j] = (int)(0xff000000 | p<<16 | p<<8 | p);
-//                    }
-//                }
-//                pred_letter += classifyImage(model_input_d);
-//            }
-//            retTextSeg.clear();
+            retTextSeg = edge_d.performTextSeg(mCrop);
+            float[] model_input_d = new float[28*28];
+            int [] draw_last_letter = new int[28*28];
+            for (int i = 0; i < retTextSeg.size(); i++) {
+                Mat temp = retTextSeg.get(i);
+                for (int j = 0; j < temp.rows(); j++) {
+                    model_input_d[j] = (float) temp.get(j, 0)[0];
+                    if (i == retTextSeg.size() -  1) {
+                        int p = (int) temp.get(j, 0)[0];
+                        draw_last_letter[j] = (int)(0xff000000 | p<<16 | p<<8 | p);
+                    }
+                }
+                pred_letter += classifyImage(model_input_d);
+            }
+            retTextSeg.clear();
 
             // One letter
-            retEdge = edge_d.processImage(mCrop);
-            float[] model_input_d = new float[retEdge.length];
-            for (int i = 0; i < retEdge.length; i++) {
-                model_input_d[i] = (float) retEdge[i];
-//            Log.e("Pixel", "" + i + " : " + model_input_d[i]);
-            }
-            pred_letter = classifyImage(model_input_d);
+//            retEdge = edge_d.processImage(mCrop);
+//            float[] model_input_d = new float[retEdge.length];
+//            for (int i = 0; i < retEdge.length; i++) {
+//                model_input_d[i] = (float) retEdge[i];
+////            Log.e("Pixel", "" + i + " : " + model_input_d[i]);
+//            }
+//            pred_letter = classifyImage(model_input_d);
 
 
 //            drawLetter(surfaceHolder, draw_last_letter);
+//            drawSurface(surfaceHolder);
         } else {
 
             // Text Segmentation
-//            retTextSeg = edge_d.performTextSeg(mCrop);
-//            for (int i = 0; i < retTextSeg.size(); i++) {
-//                pred_letter += my_svm.predict(retTextSeg.get(i));
-//            }
-//            retTextSeg.clear();
+            retTextSeg = edge_d.performTextSeg(mCrop);
+            for (int i = 0; i < retTextSeg.size(); i++) {
+                pred_letter += my_svm.predict(retTextSeg.get(i));
+            }
+            retTextSeg.clear();
 
             // One letter
-            retEdge = edge_d.processImage(mCrop);
-            Mat temp = new Mat(28,28, CvType.CV_32FC1);
-            temp.put(0, 0, retEdge);
-            temp = temp.reshape(0,28*28);
-            pred_letter = my_svm.predict(temp);
+//            retEdge = edge_d.processImage(mCrop);
+//            Mat temp = new Mat(28,28, CvType.CV_32FC1);
+//            temp.put(0, 0, retEdge);
+//            temp = temp.reshape(0,28*28);
+//            pred_letter = my_svm.predict(temp);
 
         }
         predicted_String.setText("PREDICTION: " + pred_letter);
@@ -324,8 +320,15 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
         Bitmap bmp = Bitmap.createBitmap(letter, 28, 28, Bitmap.Config.ARGB_8888);
         bmp = Bitmap.createBitmap(bmp, 0, 0, bmp.getWidth(), bmp.getHeight(), matrix, true);
-//        canvas.drawBitmap(bmp, new Rect(0, 0, myROIWidth, myROIHeight), new Rect(0, 0, canvas.getWidth(), canvas.getHeight()), null);
         canvas.drawBitmap(bmp, new Rect(0, 0, 28, 28), new Rect(0, 0, canvas.getWidth(), canvas.getHeight()), null);
+        surfaceHolder.unlockCanvasAndPost(canvas);
+    }
+
+    public void draw(SurfaceHolder holder, Mat m) {
+        Canvas canvas = surfaceHolder.lockCanvas(null);
+        Bitmap bmp = Bitmap.createBitmap(m.cols(), m.rows(),Bitmap.Config.ARGB_8888);
+        Utils.matToBitmap(m, bmp);
+        canvas.drawBitmap(bmp, null, new Rect(0, 0, canvas.getWidth(), canvas.getHeight()), null);
         surfaceHolder.unlockCanvasAndPost(canvas);
     }
 

@@ -5,6 +5,9 @@ import android.util.Log;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.core.MatOfPoint;
+import org.opencv.core.Scalar;
+import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
 import java.lang.Math;
@@ -17,6 +20,7 @@ public class EdgeDetection  {
     private double[][] kernelX = new double[][] {{1,0,-1},{1,0,-1},{1,0,-1}};
     private double[][] kernelY = new double[][] {{1,1,1},{0,0,0},{-1,-1,-1}};
 
+    private int thresh = 130;   // Threshold for grayscale
     public EdgeDetection(int _width, int _height) {
         width = _width;
         height = _height;
@@ -93,6 +97,7 @@ public class EdgeDetection  {
             val1 = mResized.get(i, 0);
             val1[0] = Math.floor((val1[0]-Min)*255/(Max-Min));
             p = (int) (val1[0]);
+            // if (i < 28 || i % 28 == 0 || i % 28 == 27 || i > 755)
             if (i < 28 || i % 28 == 0 || i % 28 == 27 || i > 755) {
                 p = (int) (Math.floor(((int)(mResized.get(1, 0)[0])-Min)*255/(Max-Min)));
             }
@@ -122,12 +127,20 @@ public class EdgeDetection  {
         // 0 to 255 range
         double p;
         for (int i = 0; i < edge_data.length; i++) {
-            if (i < width || i % width == 0 || i % width == width - 1 || i > ((width * height) - width - 1)) {
+
+            if (i < width * 5 || i % width < 5 || i % width > width - 5 || i > ((width * height) - (width * 5) - 1)) {
                 // remove border edges
                 p = (double) (Math.floor(((edge_data[1])-Min)*255/(Max-Min)));
             } else {
                 p = Math.floor((edge_data[i]-Min)*255/(Max-Min));
             }
+
+            if (p < thresh) {
+                p = 0;  // Black
+            } else {
+                p = 255; // White
+            }
+
             ret_edge[i] = p;
         }
 
@@ -170,6 +183,37 @@ public class EdgeDetection  {
         return ret_data;
     }
 
+    public double[] convertGrayscaleDouble(Mat data) {
+        double [] ret_d = new double[(int)data.total()];
+
+        double Min = data.get(0, 0)[0];
+        double Max = data.get(0, 0)[0];
+        for (int i = 0; i < data.rows(); i++) {
+            double temp = data.get(i, 0)[0];
+            if (temp > Max) {
+                Max = temp;
+            }
+
+            if (temp < Min) {
+                Min = temp;
+            }
+        }
+
+        double[] val1;
+        int p;
+        for (int i = 0; i < data.rows(); i++) {
+            val1 = data.get(i, 0);
+            val1[0] = 255 - Math.floor((val1[0]-Min)*255/(Max-Min));
+            p = (int) (255 - val1[0]);
+            if (i < 27 || i % 28 == 0 || i % 28 == 27 || i > 755) {
+                // Remove borders
+                p = (int) (Math.floor(((int)(data.get(1, 0)[0])-Min)*255/(Max-Min)));
+            }
+            ret_d[i] = p;
+        }
+
+        return ret_d;
+    }
     public Mat convertGrayscaleRange(Mat data) {
         Mat ret_gs = new Mat(data.rows(), data.cols(), CvType.CV_32FC1);
         double [] ret_d = new double[(int)ret_gs.total()];
@@ -204,13 +248,39 @@ public class EdgeDetection  {
 
         return ret_gs;
     }
+
+    public Mat drawTextSeg(Mat data) {
+        double[] grayscale_edge = performEdgeD(data);
+//        double [] grayscale_edge = convertGrayscaleDouble(data);
+        /*
+            Testing Contours
+        */
+        Mat binary = new Mat(data.rows(), data.cols(), CvType.CV_8UC1);
+        binary.put(0, 0, grayscale_edge);
+
+//        List<MatOfPoint> contours = new ArrayList<>();
+//        Mat hierarchy = new Mat();
+//
+//        Imgproc.findContours(binary, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
+//        Mat contourImg = new Mat(data.size(), data.type());
+//        Log.e("Contour", "" + contours.size());
+//        for (int i = 0; i < contours.size(); i++) {
+//            Imgproc.drawContours(binary, contours, i, new Scalar(100, 0, 0), 2);
+//        }
+        /*
+            Testing Contours
+         */
+
+        return binary;
+    }
     public List<Mat> performTextSeg(Mat data) {
         List<Mat> retText = new ArrayList<Mat>();
         double[] grayscale_edge = performEdgeD(data);
 
+
         List<Integer> col_pairs = findCutOffColumns(grayscale_edge);
 
-
+        Log.e("COLS INFO", "" + col_pairs.size());
         for (int i = 0; i < col_pairs.size(); i+=2) {
             Mat temp = data.submat(0, height, col_pairs.get(i), col_pairs.get(i+1));
 
@@ -226,29 +296,43 @@ public class EdgeDetection  {
     public List<Integer> findCutOffColumns(double[] data) {
         List<Integer> col_pairs = new ArrayList<Integer>();
 
-        boolean saw_white = false;
+//        boolean saw_white = false;
         boolean white_col = false;
-        col_pairs.add(0);
-        Log.e("COLS", "new " + 0);
+        boolean new_pair = true;
+        int temp_begin = 0;
+//        col_pairs.add(0);
+//        Log.e("COLS", "new " + 0);
         for (int i = 1; i < width; i++) {
             white_col = false;
             for (int j = 0; j < height; j++) {
                 if (data[(j * width) + i] == 255) {
                     white_col = true;
-                    if (!saw_white) {
-                        saw_white = true;
+                    if (new_pair) {
+                        if (i - 10 > 0) {
+                            temp_begin = i - 10;
+                        } else {
+                            temp_begin = i;
+                        }
 
+                        new_pair = false;
                     }
                     break;
                 }
             }
 
-            if (saw_white && !white_col) {
-                col_pairs.add(i);
-                col_pairs.add(i);
-                Log.e("COLS", "end " + i);
-                Log.e("COLS", "" + i);
-                saw_white = false;
+            if (!new_pair && !white_col) {
+                if (i - temp_begin > 10) {
+                    col_pairs.add(temp_begin);
+//                    Log.e("COLS", "begin " + temp_begin);
+                    if (i + 10 < width) {
+                        col_pairs.add(i + 10);
+//                        Log.e("COLS", "end + 10 " + (i + 10));
+                    } else {
+                        col_pairs.add(i);
+//                        Log.e("COLS", "end " + i);
+                    }
+                }
+                new_pair = true;
             }
 
         }
