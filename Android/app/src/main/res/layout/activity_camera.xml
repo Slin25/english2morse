@@ -45,7 +45,9 @@
         android:layout_alignParentBottom="true"
         android:layout_centerHorizontal="true"
         android:layout_marginBottom="91dp"
-        android:text='CAPTURE TEXT TO TRANSLATE' />
+        android:text='CAPTURE TEXT TO TRANSLATE'
+        android:textColor="#FF0000"
+        android:textSize="16sp" />
 
     <TextView
         android:id="@+id/morse"
@@ -54,7 +56,9 @@
         android:layout_alignParentBottom="true"
         android:layout_centerHorizontal="true"
         android:layout_marginBottom="70dp"
-        android:text="Morse" />
+        android:text="Morse"
+        android:textColor="#4CAF50"
+        android:textSize="16sp" />
 
     <SurfaceView
         android:id="@+id/debugView"
